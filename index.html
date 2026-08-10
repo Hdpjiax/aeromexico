@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorer | Aeroméxico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f1115;
+            color: #e2e8f0;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-dark {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .input-dark:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(37, 99, 235, 0.5);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Steps navigation */
+        .step { display: none; }
+        .step.active { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-10 text-center">
+            <div class="inline-flex items-center justify-center p-3 mb-4 rounded-full bg-blue-900/30 text-blue-400">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold mb-2 tracking-tight text-white">Aeroméxico Explorer</h1>
+            <p class="text-slate-400">Pega la URL de una cotización para extraer sus vuelos y campos requeridos.</p>
+        </header>
+
+        <!-- STEP 1: INPUT URL -->
+        <div id="step1" class="step active glass-panel rounded-2xl p-6 md:p-10 text-center max-w-3xl mx-auto">
+            <h2 class="text-xl font-semibold mb-6">1. Pegar URL de Cotización</h2>
+            <form id="urlForm" class="space-y-6">
+                <input type="url" id="amUrl" class="w-full input-dark rounded-xl px-4 py-4 text-center" placeholder="https://www.aeromexico.com/bf/es-mx/reserva/opciones?itinerary=..." required>
+                <button type="submit" id="btnExplore" class="w-full btn-primary text-white font-semibold rounded-2xl px-6 py-4 flex items-center justify-center gap-3 text-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    Explorar URL
+                </button>
+            </form>
+        </div>
+
+        <!-- STEP 2: SELECT FLIGHT -->
+        <div id="step2" class="step">
+            <button onclick="goToStep(1)" class="mb-6 text-slate-400 hover:text-white flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Volver a URL</button>
+            
+            <div class="glass-panel rounded-2xl p-6 md:p-8">
+                <h2 class="text-xl font-semibold mb-6 border-b border-white/5 pb-4">2. Vuelos Encontrados</h2>
+                <div id="flightsContainer" class="space-y-4">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: DYNAMIC FORM -->
+        <div id="step3" class="step">
+            <button onclick="goToStep(2)" class="mb-6 text-slate-400 hover:text-white flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Volver a Vuelos</button>
+            
+            <form id="autoFillForm" class="space-y-6">
+                <!-- DYNAMIC PASSENGERS -->
+                <div class="glass-panel rounded-2xl p-6 md:p-8">
+                    <h2 class="text-xl font-semibold mb-6 flex items-center justify-between border-b border-white/5 pb-4">
+                        <span>3. Datos de Pasajeros (Campos extraídos en vivo)</span>
+                        <span class="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full border border-green-500/30">Adicionales Autorechazados por Bot</span>
+                    </h2>
+                    <div id="dynamicPassengersContainer" class="space-y-6">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- STATIC CREDIT CARD (Same as before) -->
+                <div class="glass-panel rounded-2xl p-6 md:p-8">
+                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2 border-b border-white/5 pb-4">Tarjeta de la Agencia</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">Número de Tarjeta</label>
+                            <input type="text" id="ccNumber" class="w-full input-dark rounded-xl px-4 py-3" placeholder="0000 0000 0000 0000" maxlength="19" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">Nombre en la Tarjeta</label>
+                            <input type="text" id="ccName" class="w-full input-dark rounded-xl px-4 py-3" placeholder="Agencia de Viajes" required>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">Mes</label>
+                                <input type="text" id="ccMonth" class="w-full input-dark rounded-xl px-4 py-3" placeholder="MM" maxlength="2" required>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">Año</label>
+                                <input type="text" id="ccYear" class="w-full input-dark rounded-xl px-4 py-3" placeholder="AA" maxlength="2" required>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">CVV</label>
+                                <input type="password" id="ccCvv" class="w-full input-dark rounded-xl px-4 py-3" placeholder="***" maxlength="4" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBMIT -->
+                <button type="submit" class="w-full btn-primary text-white font-semibold rounded-2xl px-6 py-4 flex items-center justify-center gap-3 text-lg mt-8">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    Finalizar y Pagar Automáticamente
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- Processing Overlay -->
+    <div id="overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex-col items-center justify-center hidden">
+        <div class="relative flex items-center justify-center mb-8">
+            <div class="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+            <svg class="w-6 h-6 text-blue-400 absolute" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-2" id="overlayTitle">Trabajando...</h2>
+        <p class="text-blue-400/80 max-w-md text-center" id="statusText">Por favor espera.</p>
+    </div>
+
+    <script>
+        const SERVER_URL = "http://localhost:8000/api";
+        let currentUrl = "";
+        
+        function goToStep(step) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+        }
+
+        function showOverlay(title, text) {
+            document.getElementById('overlayTitle').innerText = title;
+            document.getElementById('statusText').innerText = text;
+            document.getElementById('overlay').style.display = 'flex';
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        // STEP 1 -> STEP 2 (Explore)
+        document.getElementById('urlForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            currentUrl = document.getElementById('amUrl').value;
+            
+            showOverlay("Explorando Aeroméxico...", "Lanzando navegador fantasma para raspar vuelos. Esto puede tardar unos 20 segundos.");
+            
+            try {
+                const res = await fetch(`${SERVER_URL}/explore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: currentUrl })
+                });
+                
+                const data = await res.json();
+                
+                if(!res.ok) throw new Error(data.detail || "Error desconocido");
+                
+                // Render Flights
+                const container = document.getElementById('flightsContainer');
+                container.innerHTML = "";
+                
+                if(data.flights.length === 0) {
+                    container.innerHTML = `<div class="text-center p-8 text-slate-400">No se encontraron vuelos o el anti-bot nos bloqueó.</div>`;
+                } else {
+                    data.flights.forEach(f => {
+                        container.innerHTML += `
+                            <div class="flex items-center justify-between p-5 bg-black/20 border border-white/5 rounded-xl hover:bg-black/40 transition">
+                                <div class="flex-1">
+                                    <div class="text-2xl font-bold">${f.departureTime} <span class="text-slate-500 text-sm mx-2">→</span> ${f.arrivalTime}</div>
+                                    <div class="text-sm text-slate-400 mt-1">${f.connectionInfo}</div>
+                                </div>
+                                <div class="flex gap-2">
+                                    ${Object.entries(f.fares).map(([cls, price]) => {
+                                        if(price === 0) return `<div class="px-4 py-2 bg-white/5 text-white/20 rounded-lg text-sm text-center">Agotado</div>`;
+                                        return `<button type="button" onclick="selectFlight('${f.id}')" class="px-4 py-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 border border-blue-500/20 rounded-lg text-sm transition text-center min-w-[100px]">
+                                            <div class="text-xs uppercase">${cls}</div>
+                                            <div class="font-bold">$${price}</div>
+                                        </button>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                hideOverlay();
+                goToStep(2);
+                
+            } catch (err) {
+                alert("Error: " + err.message);
+                hideOverlay();
+            }
+        });
+
+        // STEP 2 -> STEP 3 (Select Flight and generate dynamic form)
+        async function selectFlight(flightId) {
+            showOverlay("Simulando Selección...", "Avanzando en el DOM real de Aeroméxico, evadiendo maletas y leyendo requerimientos de pasajeros...");
+            
+            try {
+                const res = await fetch(`${SERVER_URL}/select-flight`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ flight_id: flightId, url: currentUrl })
+                });
+                
+                const data = await res.json();
+                
+                if(!res.ok) throw new Error(data.detail);
+                
+                // Extraer el número de pasajeros de la URL (travelers=A3_C0)
+                let numAdults = 1;
+                const match = currentUrl.match(/travelers=A(\d+)/);
+                if(match) numAdults = parseInt(match[1]);
+                
+                const container = document.getElementById('dynamicPassengersContainer');
+                container.innerHTML = "";
+                
+                for(let i=0; i < numAdults; i++) {
+                    let fieldsHtml = "";
+                    data.passenger_fields_required.forEach(field => {
+                        if(field.type === "select") {
+                            fieldsHtml += `
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium text-slate-300">${field.label}</label>
+                                    <select class="w-full input-dark rounded-lg px-3 py-2 text-sm" ${field.required?'required':''}>
+                                        ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                    </select>
+                                </div>
+                            `;
+                        } else {
+                            fieldsHtml += `
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium text-slate-300">${field.label}</label>
+                                    <input type="${field.type}" class="w-full input-dark rounded-lg px-3 py-2 text-sm" placeholder="${field.label}" ${field.required?'required':''}>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    container.innerHTML += `
+                        <div class="p-5 rounded-xl bg-black/20 border border-white/5 relative">
+                            <h3 class="text-sm font-semibold text-slate-400 mb-4 uppercase tracking-wider">Pasajero ${i+1}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                ${fieldsHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                hideOverlay();
+                goToStep(3);
+                
+            } catch(err) {
+                alert("Error: " + err.message);
+                hideOverlay();
+            }
+        }
+
+        // STEP 3 -> Final Payment
+        document.getElementById('autoFillForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Gather Passengers
+            const passengers = [];
+            document.querySelectorAll('#dynamicPassengersContainer > div').forEach(div => {
+                const inputs = div.querySelectorAll('input, select');
+                let pData = {};
+                inputs.forEach(inp => pData[inp.placeholder || inp.previousElementSibling.innerText] = inp.value);
+                passengers.push(pData);
+            });
+
+            const payload = {
+                contact: { email: "contacto@agencia.com", phone: "5512345678" }, // hardcoded fallback si se omite
+                payment: {
+                    cc: document.getElementById('ccNumber').value.replace(/\s+/g, ''),
+                    name: document.getElementById('ccName').value,
+                    month: document.getElementById('ccMonth').value,
+                    year: document.getElementById('ccYear').value,
+                    cvv: document.getElementById('ccCvv').value
+                },
+                passengers: passengers
+            };
+            
+            showOverlay("Conectando con MoreLogin...", "Inyectando datos directamente a la ventana activa de Aeroméxico mediante Playwright CDP...");
+            
+            try {
+                const res = await fetch(`${SERVER_URL}/inject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.detail);
+
+                document.getElementById('overlay').innerHTML = `
+                    <div class="bg-green-500/20 text-green-400 p-4 rounded-full mb-4">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-2">¡Inyección Exitosa!</h2>
+                    <p class="text-green-400">Revisa tu ventana de MoreLogin, los campos deberían estar llenos.</p>
+                    <button onclick="location.reload()" class="mt-6 px-6 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition">Volver al Inicio</button>
+                `;
+            } catch (err) {
+                alert("Error de Inyección: " + err.message);
+                hideOverlay();
+            }
+        });
+
+        // Format CC number input
+        document.getElementById('ccNumber').addEventListener('input', function (e) {
+            this.value = this.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+        });
+    </script>
+</body>
+</html>
